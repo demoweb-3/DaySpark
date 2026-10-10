@@ -1,10 +1,14 @@
 // DaySpark Service Worker — offline-first caching
+// Uses relative paths derived from the SW's own location so it works
+// under any base path (e.g. /DaySpark/ on GitHub Pages).
 const CACHE_NAME = 'dayspark-v1';
+const BASE = self.registration.scope; // e.g. https://user.github.io/DaySpark/
+
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.webmanifest',
-  '/icon.svg',
+  BASE,
+  BASE + 'index.html',
+  BASE + 'manifest.webmanifest',
+  BASE + 'icon.svg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -38,8 +42,11 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests (fonts, external resources)
   if (url.origin !== self.location.origin) return;
 
-  // Skip chrome-extension requests
+  // Skip non-http(s) protocols
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+
+  // Skip requests outside our scope
+  if (!url.href.startsWith(BASE)) return;
 
   // Network-first for navigation requests (so users get updates),
   // fall back to cached app shell when offline
@@ -51,7 +58,9 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then((r) => r || caches.match('/')))
+        .catch(() =>
+          caches.match(BASE + 'index.html').then((r) => r || caches.match(BASE))
+        )
     );
     return;
   }
